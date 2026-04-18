@@ -1,0 +1,9 @@
+split,signal,raw_any_nan_segments,raw_any_inf_segments,raw_nan_in_first_1000_segments,raw_inf_in_first_1000_segments,tensor_interior_nan_segments,tensor_interior_inf_segments,tensor_padding_nan_segments,n_total
+train,Bvp,0,0,0,0,0,0,36,1476
+train,Eda,0,0,0,0,0,0,36,1476
+train,Resp,0,0,0,0,0,0,36,1476
+train,SpO2,0,0,0,0,0,0,36,1476
+validation,Bvp,0,0,0,0,0,0,0,432
+validation,Eda,0,0,0,0,0,0,0,432
+validation,Resp,0,0,0,0,0,0,0,432
+validation,SpO2,0,0,0,0,0,0,0,432

@@ -1,0 +1,44 @@
+# Challenge-supplied raw data (keep out of the repo — 100+ MB, may have
+# redistribution restrictions). Contributors should place the `train/` and
+# `validation/` directories from the AI4Pain 2026 challenge under this path
+# before running the scripts.
+Dataset/
+!Dataset/.gitkeep
+
+# Reproducible on demand via `uv run python scripts/00_prime_cache.py`
+analysis/cache/
+
+# Virtual environments
+analysis/.venv/
+.venv/
+env/
+venv/
+
+# Editor / Claude Code local state
+.claude/
+.vscode/
+.idea/
+
+# Python runtime debris
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+build/
+dist/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Ad hoc screenshots / clipboard pastes the user didn't intend to version
+Pasted image*.png
+Pasted image*.jpg
+
+# Scratch outputs
+/tmp/
+*.log
