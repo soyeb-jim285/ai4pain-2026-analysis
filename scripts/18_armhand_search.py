@@ -121,6 +121,18 @@ def load_features() -> tuple[pd.DataFrame, list[str]]:
         df = df.merge(tb, on="segment_id", how="left")
         print(f"[load] merged {len(rename)} tierB derivative features")
 
+    # Merge tierC paper-derived features (from script 21) if present
+    tierc_fp = TAB_DIR / "tierC_paper_features.parquet"
+    if tierc_fp.exists():
+        tc = pd.read_parquet(tierc_fp)
+        drop = [c for c in ("subject", "class", "split", "segment_idx")
+                if c in tc.columns and c != "segment_id"]
+        tc = tc.drop(columns=drop, errors="ignore")
+        rename = {c: f"tierC_{c}" for c in tc.columns if c != "segment_id"}
+        tc = tc.rename(columns=rename)
+        df = df.merge(tc, on="segment_id", how="left")
+        print(f"[load] merged {len(rename)} tierC paper features")
+
     df = df[df["class"].isin(("NoPain",) + ARM_HAND)].copy().reset_index(drop=True)
     feat_cols = [c for c in df.columns if c not in META_COLS]
     nan_frac = df[feat_cols].isna().mean()
@@ -210,12 +222,60 @@ def feature_strategies(df_pain: pd.DataFrame, feat_cols: list[str]) -> dict[str,
     resp_top20 = (cliff_series.loc[cliff_series.index.intersection(resp_features)]
                   .head(20).index.tolist())
 
+    # tight_pool: drop noise-heavy classes (EDA, SpO2, cross, reactivity dupes,
+    # high-NaN entropy/fractal). Keep RESP-everything + curated BVP winners +
+    # tierB BVP derivatives + 5 BVP subject-cluster covariates.
+    tight: list[str] = []
+    bvp_kinetics_winners = {
+        "bvp_local_vasoconstriction_speed_r2",
+        "bvp_local_vasoconstriction_speed_slope",
+        "bvp_local_vasoconstriction_index",
+        "bvp_beat_amp_trend_ratio",
+        "bvp_recovery_halftime_s",
+        "bvp_peak_envelope_slope",
+        "bvp_peak_envelope_auc",
+        "bvp_amp_halfdecay_time_s",
+        "bvp_amp_quartdecay_time_s",
+        "bvp_amplitude_jitter",
+        "bvp_first_derivative_peak_time",
+        "bvp_local_min_amp_s",
+    }
+    cluster_covariates = {
+        "Bvp_spec_edge_95", "Bvp_samp_entropy", "Bvp_spec_bandwidth",
+        "Bvp_hjorth_complexity", "Bvp_approx_entropy",
+    }
+    for c in feat_cols:
+        cl = c.lower()
+        if channel_of(c) == "resp":
+            tight.append(c); continue
+        if cl in bvp_kinetics_winners:
+            tight.append(c); continue
+        if c.startswith("tierB_Bvp_"):
+            tight.append(c); continue
+        if c.startswith("tierC_Bvp_"):
+            tight.append(c); continue
+        if c in cluster_covariates:
+            tight.append(c); continue
+    tight = list(dict.fromkeys(tight))  # de-dup, keep order
+
+    # tight_pool ranked by |Cliff's delta|
+    tight_ranked = (
+        cliff_series.loc[cliff_series.index.intersection(tight)]
+        .index.tolist()
+    )
+    # any tight cols not in cliff_series ranking, append at end
+    for c in tight:
+        if c not in tight_ranked:
+            tight_ranked.append(c)
+
     return {
         "all": feat_cols,
         "top40_cliff": cliff_series.head(40).index.tolist(),
         "top80_cliff": cliff_series.head(80).index.tolist(),
         "top160_cliff": cliff_series.head(min(160, len(feat_cols))).index.tolist(),
         "top40_anova": f_series.head(40).index.tolist(),
+        "tight_pool": tight_ranked,
+        "tight_pool_top40": tight_ranked[:40],
         "resp_only": resp_features,
         "resp_top20": resp_top20,
     }
@@ -319,7 +379,8 @@ def all_configs() -> list[dict]:
     """
     cfgs: list[dict] = []
     feature_sets = ["all", "top40_cliff", "top80_cliff",
-                    "top40_anova", "resp_only", "resp_top20"]
+                    "top40_anova", "resp_only", "resp_top20",
+                    "tight_pool", "tight_pool_top40"]
     cheap_preprocs = ["std", "robust"]
 
     grids: dict[str, list[dict]] = {

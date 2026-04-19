@@ -234,18 +234,12 @@ def pretrain_ssl(
 # ---------------------------------------------------------------------------
 # Supervised LOSO
 # ---------------------------------------------------------------------------
-def train_one_fold(
-    Xn: np.ndarray, y: np.ndarray, tr_idx: np.ndarray, te_idx: np.ndarray,
+def _train_single_model(
+    Xt: "torch.Tensor", yt: "torch.Tensor",
     encoder_init: CNNEncoder | None, epochs: int, batch_size: int, lr: float,
-    freeze_encoder: bool,
-) -> tuple[np.ndarray, dict]:
-    Xt = torch.from_numpy(Xn[tr_idx]).float()
-    Xe = torch.from_numpy(Xn[te_idx]).float()
-    yt = torch.from_numpy(y[tr_idx]).long()
-    ye = torch.from_numpy(y[te_idx]).long()
-    dl = DataLoader(TensorDataset(Xt, yt), batch_size=batch_size, shuffle=True,
-                    num_workers=0, drop_last=False)
-
+    freeze_encoder: bool, seed: int,
+) -> CNNClassifier:
+    torch.manual_seed(seed)
     if encoder_init is None:
         enc = CNNEncoder().to(DEVICE)
     else:
@@ -255,10 +249,11 @@ def train_one_fold(
         for p in enc.parameters():
             p.requires_grad_(False)
     model = CNNClassifier(enc).to(DEVICE)
-
     params = [p for p in model.parameters() if p.requires_grad]
     opt = torch.optim.AdamW(params, lr=lr, weight_decay=1e-4)
     lossf = nn.CrossEntropyLoss()
+    dl = DataLoader(TensorDataset(Xt, yt), batch_size=batch_size, shuffle=True,
+                    num_workers=0, drop_last=False)
     for _ in range(epochs):
         model.train(True)
         for xb, yb in dl:
@@ -267,21 +262,46 @@ def train_one_fold(
             loss = lossf(model(xb), yb)
             loss.backward()
             opt.step()
+    return model
 
-    model.train(False)
-    with torch.no_grad():
-        yhat = model(Xe.to(DEVICE)).argmax(1).cpu().numpy()
+
+def train_one_fold(
+    Xn: np.ndarray, y: np.ndarray, tr_idx: np.ndarray, te_idx: np.ndarray,
+    encoder_init: CNNEncoder | None, epochs: int, batch_size: int, lr: float,
+    freeze_encoder: bool, n_seeds: int = 1,
+) -> tuple[np.ndarray, dict]:
+    """Train n_seeds models on the same fold, average softmax probs."""
+    Xt = torch.from_numpy(Xn[tr_idx]).float()
+    Xe = torch.from_numpy(Xn[te_idx]).float()
+    yt = torch.from_numpy(y[tr_idx]).long()
+    ye = torch.from_numpy(y[te_idx]).long()
+    probs = np.zeros((len(te_idx), 2), dtype=np.float64)
+    for s in range(n_seeds):
+        seed = SEED + s * 1000 + 1
+        model = _train_single_model(Xt, yt, encoder_init, epochs, batch_size,
+                                    lr, freeze_encoder, seed=seed)
+        model.train(False)
+        with torch.no_grad():
+            logits = model(Xe.to(DEVICE))
+            p = torch.softmax(logits, dim=1).cpu().numpy()
+        probs += p
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    probs /= n_seeds
+    yhat = probs.argmax(axis=1)
     return yhat, {
         "acc": accuracy_score(ye.numpy(), yhat),
         "macro_f1": f1_score(ye.numpy(), yhat, average="macro", zero_division=0),
         "balanced_acc": balanced_accuracy_score(ye.numpy(), yhat),
+        "n_seeds": int(n_seeds),
     }
 
 
 def run_loso(
     config: str, train_n: np.ndarray, train_m: pd.DataFrame,
     encoder_init: CNNEncoder | None, epochs: int, batch_size: int, lr: float,
-    freeze_encoder: bool,
+    freeze_encoder: bool, n_seeds: int = 1,
 ) -> tuple[list[dict], np.ndarray]:
     mask = train_m["class"].isin(ARM_HAND).to_numpy()
     Xn = train_n[mask]
@@ -299,17 +319,12 @@ def run_loso(
 
     for i, (tr, te) in enumerate(tqdm(folds, desc=f"{config} LOSO")):
         if i in completed_folds:
-            # Reload prediction from CSV for the cumulative confusion matrix
-            row = _read_fold_row(config, i)
-            if row is not None:
-                # reconstruct by re-predicting cheaply? Skip CM if missing.
-                pass
             continue
         t0 = time.time()
         yhat, met = train_one_fold(
             Xn, y, tr, te, encoder_init,
             epochs=epochs, batch_size=batch_size, lr=lr,
-            freeze_encoder=freeze_encoder,
+            freeze_encoder=freeze_encoder, n_seeds=n_seeds,
         )
         all_pred[te] = yhat
         row = {
@@ -329,7 +344,7 @@ def evaluate_validation(
     config: str, train_n: np.ndarray, train_m: pd.DataFrame,
     val_n: np.ndarray, val_m: pd.DataFrame,
     encoder_init: CNNEncoder | None, epochs: int, batch_size: int, lr: float,
-    freeze_encoder: bool,
+    freeze_encoder: bool, n_seeds: int = 1,
 ) -> dict:
     train_mask = train_m["class"].isin(ARM_HAND).to_numpy()
     val_mask = val_m["class"].isin(ARM_HAND).to_numpy()
@@ -338,34 +353,24 @@ def evaluate_validation(
     yt = train_m[train_mask]["class"].map(LABEL_MAP).to_numpy().astype(np.int64)
     yv = val_m[val_mask]["class"].map(LABEL_MAP).to_numpy().astype(np.int64)
 
-    if encoder_init is None:
-        enc = CNNEncoder().to(DEVICE)
-    else:
-        enc = CNNEncoder().to(DEVICE)
-        enc.load_state_dict(encoder_init.state_dict())
-    if freeze_encoder:
-        for p in enc.parameters():
-            p.requires_grad_(False)
-    model = CNNClassifier(enc).to(DEVICE)
-    params = [p for p in model.parameters() if p.requires_grad]
-    opt = torch.optim.AdamW(params, lr=lr, weight_decay=1e-4)
-    lossf = nn.CrossEntropyLoss()
     Xt_t = torch.from_numpy(Xt).float()
     yt_t = torch.from_numpy(yt).long()
-    dl = DataLoader(TensorDataset(Xt_t, yt_t), batch_size=batch_size,
-                    shuffle=True, num_workers=0)
-    for _ in range(epochs):
-        model.train(True)
-        for xb, yb in dl:
-            xb, yb = xb.to(DEVICE), yb.to(DEVICE)
-            opt.zero_grad()
-            loss = lossf(model(xb), yb)
-            loss.backward()
-            opt.step()
-
-    model.train(False)
-    with torch.no_grad():
-        yhat = model(torch.from_numpy(Xv).float().to(DEVICE)).argmax(1).cpu().numpy()
+    Xv_t = torch.from_numpy(Xv).float()
+    probs = np.zeros((len(yv), 2), dtype=np.float64)
+    for s in range(n_seeds):
+        seed = SEED + s * 1000 + 1
+        model = _train_single_model(Xt_t, yt_t, encoder_init,
+                                    epochs, batch_size, lr,
+                                    freeze_encoder, seed=seed)
+        model.train(False)
+        with torch.no_grad():
+            p = torch.softmax(model(Xv_t.to(DEVICE)), dim=1).cpu().numpy()
+        probs += p
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    probs /= n_seeds
+    yhat = probs.argmax(axis=1)
     return {
         "config": config,
         "val_acc": float(accuracy_score(yv, yhat)),
@@ -439,12 +444,13 @@ def _write_summary() -> pd.DataFrame:
 # Main
 # ---------------------------------------------------------------------------
 def main(epochs_sup: int = 25, epochs_ssl: int = 40, epochs_ft: int = 25,
-         batch_size: int = 64, lr: float = 1e-3) -> None:
+         batch_size: int = 64, lr: float = 1e-3, n_seeds: int = 1) -> None:
     t0 = time.time()
     print(f"[device] {DEVICE}")
     if DEVICE == "cuda":
         print(f"[device] GPU={torch.cuda.get_device_name(0)} "
               f"n_gpu={torch.cuda.device_count()}")
+    print(f"[ensemble] n_seeds per fold = {n_seeds}")
 
     print("[load] arrays ...")
     train_n, train_m, val_n, val_m = load_arrays()
@@ -452,29 +458,32 @@ def main(epochs_sup: int = 25, epochs_ssl: int = 40, epochs_ft: int = 25,
 
     full_for_ssl = np.concatenate([train_n, val_n], axis=0)
 
+    sup_label = f"supervised_cnn_s{n_seeds}" if n_seeds > 1 else "supervised_cnn"
+    ssl_label = f"ssl_finetune_s{n_seeds}" if n_seeds > 1 else "ssl_finetune"
+
     # Config A: supervised CNN, no pretraining
-    print("\n>>> Config A: supervised CNN (random init)")
-    run_loso("supervised_cnn", train_n, train_m, encoder_init=None,
+    print(f"\n>>> Config A: {sup_label} (random init)")
+    run_loso(sup_label, train_n, train_m, encoder_init=None,
              epochs=epochs_sup, batch_size=batch_size, lr=lr,
-             freeze_encoder=False)
-    val_a = evaluate_validation("supervised_cnn", train_n, train_m, val_n, val_m,
+             freeze_encoder=False, n_seeds=n_seeds)
+    val_a = evaluate_validation(sup_label, train_n, train_m, val_n, val_m,
                                 encoder_init=None, epochs=epochs_sup,
                                 batch_size=batch_size, lr=lr,
-                                freeze_encoder=False)
+                                freeze_encoder=False, n_seeds=n_seeds)
     _save_validation(val_a)
     _write_summary()
 
     # Config B: SSL pretrain + fine-tune
-    print("\n>>> Config B: SSL pretrain + fine-tune")
+    print(f"\n>>> Config B: {ssl_label} (SSL pretrain + fine-tune)")
     encoder = pretrain_ssl(full_for_ssl, epochs=epochs_ssl,
                            batch_size=batch_size, lr=lr)
-    run_loso("ssl_finetune", train_n, train_m, encoder_init=encoder,
+    run_loso(ssl_label, train_n, train_m, encoder_init=encoder,
              epochs=epochs_ft, batch_size=batch_size, lr=lr,
-             freeze_encoder=False)
-    val_b = evaluate_validation("ssl_finetune", train_n, train_m, val_n, val_m,
+             freeze_encoder=False, n_seeds=n_seeds)
+    val_b = evaluate_validation(ssl_label, train_n, train_m, val_n, val_m,
                                 encoder_init=encoder, epochs=epochs_ft,
                                 batch_size=batch_size, lr=lr,
-                                freeze_encoder=False)
+                                freeze_encoder=False, n_seeds=n_seeds)
     _save_validation(val_b)
     summary = _write_summary()
 
@@ -499,7 +508,11 @@ if __name__ == "__main__":
     ap.add_argument("--epochs-finetune", type=int, default=25)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--n-seeds", type=int, default=1,
+                    help="Train N independently-seeded CNNs per fold; "
+                         "average softmax probabilities for prediction.")
     args = ap.parse_args()
     main(epochs_sup=args.epochs_supervised,
          epochs_ssl=args.epochs_ssl, epochs_ft=args.epochs_finetune,
-         batch_size=args.batch_size, lr=args.lr)
+         batch_size=args.batch_size, lr=args.lr,
+         n_seeds=args.n_seeds)
