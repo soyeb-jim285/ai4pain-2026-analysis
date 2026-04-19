@@ -40,10 +40,10 @@ echo "[push] target dataset: $DATASET_ID"
 if kaggle datasets list -m -s "$SLUG" 2>/dev/null | awk 'NR>2' | grep -q "$DATASET_ID"; then
   ts="$(date -u +%FT%TZ)"
   echo "[push] dataset exists -> pushing new version ($ts)"
-  kaggle datasets version -p . -m "refresh $ts" --dir-mode skip
+  kaggle datasets version -p . -m "refresh $ts" --dir-mode zip
 else
   echo "[push] dataset is new  -> creating"
-  kaggle datasets create -p . --dir-mode skip
+  kaggle datasets create -p . --dir-mode zip
 fi
 
 echo "[clean] removing $STAGE"
