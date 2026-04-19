@@ -1,0 +1,13 @@
+{
+  "id": "soyebjim/ai4pain-armhand-dl",
+  "title": "AI4Pain 2026 — ARM vs HAND DL training",
+  "code_file": "notebook_kaggle.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["soyebjim/ai4pain-2026-data"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

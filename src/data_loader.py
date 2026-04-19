@@ -76,10 +76,22 @@ def parse_column(col: str) -> tuple[int, str, int]:
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class DatasetPaths:
+    """Locates the AI4Pain 2026 raw CSVs.
+
+    Two layouts are accepted under `root`:
+      A. Local repo:   <root>/Dataset/{train,validation}/<Signal>/<sid>.csv
+      B. Kaggle input: <root>/{train,validation}/<Signal>/<sid>.csv  (no ``Dataset`` infix)
+
+    The first layout is detected first; the second is used as fallback.
+    """
+
     root: Path
 
     def split_dir(self, split: str) -> Path:
-        return self.root / "Dataset" / split
+        a = self.root / "Dataset" / split
+        if a.exists():
+            return a
+        return self.root / split
 
     def signal_dir(self, split: str, signal: str) -> Path:
         return self.split_dir(split) / signal
@@ -89,7 +101,11 @@ class DatasetPaths:
         return sorted(int(p.stem) for p in d.glob("*.csv"))
 
 
-DEFAULT_ROOT = Path("/stuff/Study/projects/AI4Pain 2026 Dataset")
+import os as _os  # noqa: E402  (kept local to limit scope)
+
+DEFAULT_ROOT = Path(
+    _os.environ.get("AI4PAIN_ROOT", "/stuff/Study/projects/AI4Pain 2026 Dataset")
+)
 
 
 def default_paths() -> DatasetPaths:
@@ -97,8 +113,21 @@ def default_paths() -> DatasetPaths:
 
 
 def cache_dir(paths: DatasetPaths | None = None) -> Path:
+    """Where cached tensors / metadata go.
+
+    Resolution order:
+      1. ``$AI4PAIN_CACHE``           — explicit override
+      2. ``/kaggle/working/cache``    — when ``root`` is a read-only Kaggle input
+      3. ``<root>/cache``             — local default
+    """
     paths = paths or default_paths()
-    d = paths.root / "cache"
+    explicit = _os.environ.get("AI4PAIN_CACHE")
+    if explicit:
+        d = Path(explicit)
+    elif str(paths.root).startswith("/kaggle/input"):
+        d = Path("/kaggle/working/cache")
+    else:
+        d = paths.root / "cache"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

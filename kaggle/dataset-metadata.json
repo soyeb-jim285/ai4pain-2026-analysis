@@ -1,0 +1,9 @@
+{
+  "title": "AI4Pain 2026 — train/val signals (private)",
+  "id": "soyebjim/ai4pain-2026-data",
+  "subtitle": "BVP / EDA / RESP / SpO2 segments from the AI4Pain 2026 challenge",
+  "description": "Private mirror of the AI4Pain 2026 challenge train + validation splits, used for personal model training and experimentation. Each subject contributes 12 NoPain + 12 PainArm + 12 PainHand 10-second segments at 100 Hz across 4 channels.",
+  "isPrivate": true,
+  "licenses": [{"name": "other"}],
+  "keywords": ["physiological-signals", "pain", "biosignal", "ppg", "eda"]
+}
