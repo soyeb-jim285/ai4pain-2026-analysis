@@ -107,6 +107,20 @@ LABEL_MAP = {"PainArm": 0, "PainHand": 1}
 def load_features() -> tuple[pd.DataFrame, list[str]]:
     fp = TAB_DIR / "all_features_merged.parquet"
     df = pd.read_parquet(fp)
+
+    # Merge tierB derivative features (from script 20) on segment_id if present
+    tierb_fp = TAB_DIR / "tierB_derivative_features.parquet"
+    if tierb_fp.exists():
+        tb = pd.read_parquet(tierb_fp)
+        drop = [c for c in ("subject", "class", "split", "segment_idx")
+                if c in tb.columns and c != "segment_id"]
+        tb = tb.drop(columns=drop, errors="ignore")
+        # prefix to avoid column-name collisions
+        rename = {c: f"tierB_{c}" for c in tb.columns if c != "segment_id"}
+        tb = tb.rename(columns=rename)
+        df = df.merge(tb, on="segment_id", how="left")
+        print(f"[load] merged {len(rename)} tierB derivative features")
+
     df = df[df["class"].isin(("NoPain",) + ARM_HAND)].copy().reset_index(drop=True)
     feat_cols = [c for c in df.columns if c not in META_COLS]
     nan_frac = df[feat_cols].isna().mean()
