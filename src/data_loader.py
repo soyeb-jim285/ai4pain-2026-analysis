@@ -21,8 +21,8 @@ Primary API:
 
     SIGNALS, CLASSES, SFREQ, DEFAULT_N_SAMPLES are exported constants.
 
-Cache: arrays -> analysis/cache/{split}_tensor.npz
-       meta   -> analysis/cache/{split}_meta.parquet
+Cache: arrays -> cache/{split}_tensor.npz
+       meta   -> cache/{split}_meta.parquet
 """
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def default_paths() -> DatasetPaths:
 
 def cache_dir(paths: DatasetPaths | None = None) -> Path:
     paths = paths or default_paths()
-    d = paths.root / "analysis" / "cache"
+    d = paths.root / "cache"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

@@ -6,7 +6,7 @@ dominant subject effect. Outputs CSV tables, plots, and a Markdown report.
 
 Run:
     uv run python scripts/06_class_tests.py
-from the analysis/ directory.
+from the repo root.
 """
 from __future__ import annotations
 

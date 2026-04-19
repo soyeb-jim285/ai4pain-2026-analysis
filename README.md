@@ -30,35 +30,42 @@ See `AI4Pain 2026 Challenge - Experimental Procedure, Dataset, and Participants.
 ## Project layout
 
 ```
-analysis/
-├── pyproject.toml              # uv project, Python ≥3.10
+.                                  # repo root (was analysis/)
+├── pyproject.toml                 # uv project, Python ≥3.10
+├── uv.lock
 ├── src/
-│   └── data_loader.py          # reusable loader — load_split(split) -> (tensor, meta)
+│   └── data_loader.py             # reusable loader — load_split(split) -> (tensor, meta)
 ├── scripts/
-│   ├── 00_prime_cache.py       # build numpy + parquet caches
-│   ├── 01_inventory.py         # integrity + range checks
-│   ├── 02_raw_stats.py         # per-segment descriptive stats
-│   ├── 03_physio_features.py   # HR / HRV / SCR / breathing / SpO2 features
-│   ├── 04_tfdomain_features.py # time & frequency (158 features)
-│   ├── 05_visualizations.py    # 13 exploratory figures
-│   ├── 06_class_tests.py       # ANOVA / Wilcoxon / Cliff's δ + FDR
-│   ├── 07_dimreduction.py      # PCA / t-SNE / UMAP × 3 preprocessings
-│   ├── 08_baselines.py         # LOSO baselines (3-class / binary / arm-vs-hand)
-│   ├── 09_temporal_armhand.py  # 2-s sub-window trajectories
+│   ├── 00_prime_cache.py          # build numpy + parquet caches
+│   ├── 01_inventory.py            # integrity + range checks
+│   ├── 02_raw_stats.py            # per-segment descriptive stats
+│   ├── 03_physio_features.py      # HR / HRV / SCR / breathing / SpO2 features
+│   ├── 04_tfdomain_features.py    # time & frequency (158 features)
+│   ├── 05_visualizations.py       # 13 exploratory figures
+│   ├── 06_class_tests.py          # ANOVA / Wilcoxon / Cliff's δ + FDR
+│   ├── 07_dimreduction.py         # PCA / t-SNE / UMAP × 3 preprocessings
+│   ├── 08_baselines.py            # LOSO baselines (3-class / binary / arm-vs-hand)
+│   ├── 09_temporal_armhand.py     # 2-s sub-window trajectories
 │   ├── 10_morphology_coupling.py  # PPG morphology + cross-signal coupling
-│   ├── 11_reactivity_interactions.py  # Δ-from-baseline + interactions
-│   └── 12_armhand_stronger_ml.py  # LR / RF / XGB / sub-window / 1-D CNN
+│   ├── 11_reactivity_interactions.py
+│   ├── 12_armhand_stronger_ml.py  # LR / RF / XGB / sub-window / 1-D CNN
+│   ├── 13_tierA1_onset_alignment.py
+│   ├── 14_tierA2_bvp_kinetics.py
+│   ├── 15_tierA3_stage1_calibration.py
+│   ├── 16_tierA4_subject_clusters.py
+│   ├── 17_tierA5_channel_restricted.py
+│   └── 18_armhand_search.py       # resumable hyperparameter sweep
 ├── results/
-│   ├── tables/                 # CSV + parquet deliverables
-│   └── reports/                # per-stage markdown summaries + FINDINGS.md
-├── plots/                      # all PNG figures
-└── cache/                      # primed *.npz / *.parquet (gitignored)
+│   ├── tables/                    # CSV + parquet deliverables
+│   └── reports/                   # per-stage markdown summaries + FINDINGS.md
+├── plots/                         # all PNG figures
+├── cache/                         # primed *.npz / *.parquet (gitignored)
+└── Dataset/                       # raw challenge data (gitignored)
 ```
 
 ## Quick start
 
 ```bash
-cd analysis
 uv sync
 uv run python scripts/00_prime_cache.py
 uv run python scripts/01_inventory.py

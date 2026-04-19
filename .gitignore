@@ -6,10 +6,9 @@ Dataset/
 !Dataset/.gitkeep
 
 # Reproducible on demand via `uv run python scripts/00_prime_cache.py`
-analysis/cache/
+cache/
 
 # Virtual environments
-analysis/.venv/
 .venv/
 env/
 venv/

@@ -4,7 +4,7 @@ Produces a thorough set of plots saved to plots/viz/.
 
 Run:
     uv run python scripts/05_visualizations.py
-from the analysis/ directory.
+from the repo root.
 """
 from __future__ import annotations
 

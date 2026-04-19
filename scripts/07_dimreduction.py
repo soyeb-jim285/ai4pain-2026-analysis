@@ -6,7 +6,7 @@ matrix, with subject-leakage diagnostics.
 
 Run:
     uv run python scripts/07_dimreduction.py
-from the analysis/ directory.
+from the repo root.
 """
 from __future__ import annotations
 

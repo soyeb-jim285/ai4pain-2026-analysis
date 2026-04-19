@@ -5,7 +5,7 @@ signals, aggregated per class/subject, saved to parquet/CSV and visualised.
 
 Run:
     uv run python scripts/02_raw_stats.py
-from the analysis/ directory.
+from the repo root.
 """
 from __future__ import annotations
 
