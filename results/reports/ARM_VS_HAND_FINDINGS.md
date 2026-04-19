@@ -27,6 +27,9 @@ between 0.55 and 0.60 val macro-F1.
 | Tier A #3 stage-1 calibration drift | null (paired p=0.85); pain_prob-alone F1=0.39 | `15_tierA3_stage1_calibration.py` |
 | Tier A #4 subject clustering | agglo-k2 gets 19 nominal-sig (vs 7 pooled); no cluster clears F1=0.60 | `16_tierA4_subject_clusters.py` |
 | **Tier A #5 channel-restricted** | **RESP: 17/53 FDR-sig; δ up to 0.586** | `17_tierA5_channel_restricted.py` |
+| Tier C #1 PDA 3-Gaussian on BVP (paper 2 idea) | 0 FDR / 28; LOSO 0.512, val 0.528 | `22_tierC_pda_bvp.py` |
+| Tier C #2 TVSymp envelope on EDA (paper 3 idea) | 0 FDR / 12; LOSO 0.491, val 0.477 | `23_tierC_tvsymp_eda.py` |
+| DL: 1D CNN + SSL-pretrain (5-seed Kaggle T4) | LOSO 0.46, val 0.49-0.52 (chance) | `19_armhand_dl.py` |
 
 ---
 
@@ -178,25 +181,51 @@ val macro-F1 and possibly push to 0.58 with careful ensembling:
    - Onset alignment (Tier A #1 null).
    - Stage-1 probability as a feature (Tier A #3 null).
 
-## 6. If you want to push past 0.58
+## 6. AI4Pain 2025 paper ideas — tested, none break ceiling
 
-The only unexhausted angles are:
+Three physiologically-motivated ideas lifted from the 2025 challenge papers:
 
-- **Self-supervised pretraining on the raw tensor**, because feature
-  engineering has plateaued at 0.55–0.58. A 1-D CNN with masked-channel
-  reconstruction on all 1908 segments (incl. NoPain) followed by
-  fine-tuning on ARM vs HAND may learn RESP micro-morphology that
-  aggregate features can't capture.
+- **Paper 2 (Javierre) — Pulse Decomposition Analysis.** 3-Gaussian fit per
+  BVP pulse → median/IQR of amplitudes, means, sigmas, reflection ratios
+  (28 features). Hypothesis: arterial-tree reflection geometry differs
+  between forearm and dorsal-hand stimulation sites. Result: LOSO
+  0.512 ± 0.103, val 0.528, 0/28 FDR-sig. Best raw-p `pda_mu1_iqr`
+  p = 0.028 (forward-wave position jitter across pulses) — dies under FDR.
 
-- **Wavelet-scalogram 2-D CNN** with channel attention biased toward
-  RESP at initialisation. Training cost: ~20 min on the GTX 1650 once
-  the nvidia driver lands.
+- **Paper 3 (Gkikas) — TVSymp envelope on EDA.** Narrowband (0.08–0.24 Hz)
+  Butterworth approximation of VFCDM + Hilbert envelope, normalised by
+  its std; extracted peak/latency/AUC/centroid + early-vs-late contrast
+  (12 features). Hypothesis: spinal-entry-level differences between arm
+  and hand afferents produce different sweat-response latency at finger.
+  Result: LOSO 0.491 ± 0.098, val 0.477, 0/12 FDR-sig. Peak amp means
+  are 3.404 (arm) vs 3.399 (hand) — essentially identical.
 
-- **Honest reporting of the ceiling.** If you report a robust 0.55 val
-  macro-F1 with the RESP-focused feature set + cluster-conditional LR,
-  that's a respectable and defensible result — peripheral-only pain
-  localisation is genuinely hard, and the dataset's intrinsic ceiling
-  is low.
+- **Paper 1 (Tazin) — wavelet + arc-length + fuzzy entropy.** Covered by
+  script 21 + ensemble sweep in `ARM_VS_HAND_BEST_MODEL.md` row "tierC
+  paper features": 122 configs, net val lift **−0.020**.
+
+All three 2025-paper ideas are diagnostic: even the most physiologically
+principled hand-crafted feature families can't extract localisation signal
+that isn't there. Combined with the 5-seed CNN+SSL result (LOSO 0.46, val
+0.52), the evidence is now triangulated across (a) aggregate features,
+(b) paper-derived features, (c) deep learning — all converge at 0.49–0.56.
+
+## 7. If you want to push past 0.58
+
+Genuinely-unexhausted angles (lower probability, higher cost):
+
+- **Time-series foundation models** (Moment, Chronos, Mantis) as frozen
+  feature extractors → LogReg head. Brings inductive bias from millions of
+  series; CPU-feasible (precompute once). Likely +2–3 % ceiling at best.
+- **Subject-adaptation head / meta-learning.** Paper 2's "patient-wise
+  normalisation = 77 % of importance" strongly endorses this. Combine with
+  cluster-conditional LR from §4.
+
+- **Honest reporting of the ceiling.** A robust 0.55 val macro-F1 with
+  the RESP-focused feature set + cluster-conditional LR, plus the negative
+  results from the 2025-paper feature families, is publishable as the
+  *empirical ceiling of peripheral physiology for sub-upper-extremity
+  pain localisation at 10-s resolution.*
 
 ---
 
@@ -209,7 +238,9 @@ The only unexhausted angles are:
 | `results/tables/tierA3_stage1_probabilities.csv` + `tierA3_stage1_armhand_drift.csv` | per-segment stage-1 pain-prob + drift tests |
 | `results/tables/tierA4_subject_clusters.csv` + `tierA4_within_cluster_tests.csv` + `tierA4_within_cluster_loso.csv` | subject clustering + within-cluster ARM-vs-HAND analysis |
 | `results/tables/tierA5_feature_channel_map.csv` + `tierA5_per_channel_tests.csv` + `tierA5_per_channel_loso.csv` + `tierA5_feature_count_curve.csv` | channel-restricted tests + classifiers + learning curves |
-| `results/reports/13_…_summary.md` through `17_…_summary.md` | per-analysis summaries |
+| `results/tables/tierC_pda_bvp_features.parquet` + `tierC_pda_bvp_tests.csv` | 28 PDA features (paper 2) + paired Wilcoxon/FDR |
+| `results/tables/tierC_tvsymp_eda_features.parquet` + `tierC_tvsymp_eda_tests.csv` | 12 TVSymp envelope features (paper 3) + paired Wilcoxon/FDR |
+| `results/reports/13_…_summary.md` through `17_…_summary.md`, `tierC_pda_bvp_summary.md`, `tierC_tvsymp_eda_summary.md` | per-analysis summaries |
 | `plots/tierA{1..5}_*` | figures for each Tier A analysis |
 
-Everything is reproducible end-to-end with `uv run python scripts/1{3,4,5,6,7}_*.py`.
+Everything is reproducible end-to-end with `uv run python scripts/1{3,4,5,6,7}_*.py scripts/2{2,3}_*.py`.

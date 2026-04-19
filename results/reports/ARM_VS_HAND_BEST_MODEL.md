@@ -22,7 +22,9 @@ Spread 0.020 across 3 runs ≈ noise floor on n=288 val (1 segment ≈ 0.0035 ma
 | addition | configs ran | net val lift |
 |---|---|---|
 | tierB derivative features (56 cols, 6 FDR-survivors) | 104 | -0.003 (local v2 vs v1) |
-| tierC paper features (56 cols: wavelet, arc length, fuzzy entropy) | 122 (Kaggle) | -0.020 |
+| tierC-v1 paper features (56 cols: wavelet, arc length, fuzzy entropy; script 21) | 122 (Kaggle) | -0.020 |
+| tierC-v2 PDA 3-Gaussian on BVP (28 cols; paper 2; script 22) | standalone eval | LOSO 0.512, val 0.528; 0/28 FDR |
+| tierC-v3 TVSymp envelope on EDA (12 cols; paper 3; script 23) | standalone eval | LOSO 0.491, val 0.477; 0/12 FDR |
 | tight_pool (curated ~80 RESP-focused) | 20 (Kaggle) | not in top-15 |
 | 5-seed CNN ensemble (supervised + SSL pretrain) | 2 configs | LOSO 0.46, VAL 0.52 (chance) |
 | Top-K sweep ensemble (avg probs of top 3/5/10) | 3 | LOSO 0.58, VAL 0.47 (overfit) |

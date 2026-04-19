@@ -68,6 +68,7 @@ All class effects evaluated on **subject-mean features** (41 subjects × 3 class
 - Smallest raw p-values (~0.003, not FDR-significant) come from RESP morphology: `RESP_amp_std`, `Resp_mad`.
 - Classifier macro-F1 on arm-vs-hand (pain-only segments): 0.56 LOSO → 0.50 validation, i.e. **at chance on held-out subjects**.
 - Anatomical stimulus location is not recoverable from 10 s of these four channels with aggregate features. Expected from first principles: peripheral autonomic signals respond to pain magnitude, not pain locus; location-specific motor or cortical signals (EMG, EEG, fMRI) would be needed.
+- **Follow-up — 2025-paper-derived features also fail.** AI4Pain 2025 physiology-motivated features re-implemented for localisation: PDA 3-Gaussian decomposition on BVP (paper 2, script 22) → LOSO 0.512, val 0.528, 0/28 FDR; TVSymp envelope on EDA (paper 3, script 23) → LOSO 0.491, val 0.477, 0/12 FDR. Both chance. DL (1D CNN + SSL pretrain, 5 seeds, script 19) also at chance (LOSO 0.46, val 0.52). Ceiling triangulated across aggregate features, paper-derived features, and deep learning — all converge at 0.49–0.56. See `ARM_VS_HAND_FINDINGS.md` for full breakdown.
 
 ### 3.3 Where the signal lives — channel ranking
 
