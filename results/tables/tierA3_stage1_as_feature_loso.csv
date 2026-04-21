@@ -1,2 +1,0 @@
-n_folds,macro_f1_mean,macro_f1_std,balanced_acc_mean,balanced_acc_std,chance
-41,0.3877679707342174,0.07956730657761601,0.46138211382113814,0.06724233410436287,0.5

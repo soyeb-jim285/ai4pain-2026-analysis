@@ -1,0 +1,13 @@
+{
+  "id": "soyebjim/ai4pain-2026-stage1-cnn-aug",
+  "title": "AI4Pain 2026 Stage 1 CNN aug",
+  "code_file": "stage1_cnn_aug.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["soyebjim/ai4pain-2026-data"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

@@ -1,0 +1,7 @@
+metric,pearson_r_vs_loso_f1,n
+reactivity_mean,0.37987192923047436,41
+reactivity_l2,0.3759260426494011,41
+within_std_mean,0.14948747086463898,41
+arm_hand_sep_max,0.06621213868403493,41
+arm_hand_sep_mean,0.025086219854720062,41
+nan_frac,,41

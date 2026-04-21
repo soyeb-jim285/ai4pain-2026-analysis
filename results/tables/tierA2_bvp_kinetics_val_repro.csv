@@ -1,3 +1,0 @@
-feature,train_arm_minus_hand,val_arm_minus_hand,train_direction_preserved_in_val,val_n_subjects_paired
-bvp_local_vasoconstriction_speed_r2,-0.032297560608073816,-0.05398009347284344,True,12
-bvp_local_vasoconstriction_speed_r2__delta,-0.03548555656814106,-0.05398009347284348,True,12

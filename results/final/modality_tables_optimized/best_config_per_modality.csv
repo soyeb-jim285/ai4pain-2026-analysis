@@ -1,0 +1,7 @@
+modality,n_features,stage1_model,stage1_norm,stage1_scaler,stage1_calibration,stage1_anchor_mode,stage1_anchor_lambda,stage1_logreg_c,stage2_model,stage2_norm,stage2_scaler,stage2_calibration,stage2_anchor_mode,stage2_logreg_c,w0,w1,w2,selection_train_loso_macro_f1,val_macro_f1
+bvp,62,logreg,subject_robust,std,sigmoid,none,0.5,1.0,xgb,subject_z,robust,isotonic,none,1.0,0.6,1.4,1.6,0.5623306233062331,0.5115740740740741
+eda,55,logreg,subject_z,std,sigmoid,none,0.5,1.0,logreg,subject_robust,robust,isotonic,none,1.0,0.8,1.2,1.4,0.5074525745257453,0.5115740740740741
+resp,53,xgb,subject_robust,std,sigmoid,center,0.5,1.0,logreg,subject_robust,robust,isotonic,none,1.0,0.8,1.2,1.4,0.4112466124661247,0.40972222222222227
+spo2,42,xgb,subject_robust,std,sigmoid,center,0.5,1.0,logreg,subject_z,robust,isotonic,none,1.0,0.8,1.2,1.4,0.4369918699186992,0.3958333333333333
+bvp_eda,117,logreg,subject_z,std,sigmoid,none,0.5,1.0,logreg,subject_robust,robust,isotonic,none,1.0,1.0,1.0,1.0,0.5846883468834688,0.5069444444444444
+all,212,xgb,subject_z,std,sigmoid,none,0.5,1.0,logreg,subject_z,robust,isotonic,none,1.0,0.6,1.4,1.6,0.592140921409214,0.5486111111111112

@@ -1,0 +1,13 @@
+,0
+stage1_xgb_train_final,0.01246227558850918
+stage1_xgb_val_final,0.48156596774007165
+stage1_xgb_gap,0.46910369215156245
+stage1_xgb_optimal_round,50.0
+stage1_xgb_min_val_logloss,0.3635212277359743
+stage2_xgb_train_final,0.053051094123734
+stage2_xgb_val_final,1.003937602861293
+stage2_xgb_gap,0.950886508737559
+stage2_xgb_optimal_round,4.0
+stage2_xgb_min_val_logloss,0.6909816825969352
+stage1_auc,0.9017168209876543
+stage2_auc,0.5715663580246914

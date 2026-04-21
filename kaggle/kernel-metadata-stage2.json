@@ -1,0 +1,13 @@
+{
+  "id": "soyebjim/ai4pain-2026-stage-2-cnn-arm-vs-hand",
+  "title": "AI4Pain 2026 — Stage 2 CNN arm vs hand",
+  "code_file": "stage2_cnn.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["soyebjim/ai4pain-2026-data"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

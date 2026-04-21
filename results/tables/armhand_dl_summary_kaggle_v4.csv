@@ -1,3 +1,0 @@
-config,loso_macro_f1_mean,loso_macro_f1_std,n_folds,loso_acc_mean,loso_balanced_acc_mean,elapsed_s_total,val_macro_f1,val_acc,val_balanced_acc,n_val,n_seeds,run
-ssl_finetune_s5,0.466333,0.105816,41,0.481707,0.481707,420.335887,0.519350,0.520833,0.520833,288,5,kaggle_v4_t4
-supervised_cnn_s5,0.460978,0.101620,41,0.480691,0.480691,429.238148,0.486012,0.486111,0.486111,288,5,kaggle_v4_t4
