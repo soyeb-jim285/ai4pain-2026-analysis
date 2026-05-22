@@ -201,14 +201,25 @@ def stage1_feature_sets(train_df: pd.DataFrame, feat_cols: list[str]) -> dict[st
     bvp = unique_by_canonical([c for c in feat_cols if channel_of(c) == "bvp"])
     eda = unique_by_canonical([c for c in feat_cols if channel_of(c) == "eda"])
     resp = unique_by_canonical([c for c in feat_cols if channel_of(c) == "resp"])
+    all_canon = unique_by_canonical(feat_cols)
     ranked_bvp_eda = rank_binary_features(train_df, bvp + eda, positive="Pain")
     ranked_resp = rank_binary_features(train_df, resp, positive="Pain")
+    ranked_all = rank_binary_features(train_df, all_canon, positive="Pain")
     fwd8 = [f for f in EDA_BVP_FWD8 if f in feat_cols]
+    spo2flag = [c for c in ("spo2flag_std", "spo2flag_is_constant", "spo2flag_range", "spo2flag_nunique_log") if c in feat_cols]
+    spo2flag_binary = [c for c in ("spo2flag_is_constant",) if c in feat_cols]
+    spo2flag_std_only = [c for c in ("spo2flag_std",) if c in feat_cols]
     return {
         "bvp_only": bvp,
         "eda_only": eda,
         "bvp_eda_core": bvp + eda,
+        "bvp_eda_core_spo2flag": bvp + eda + spo2flag,
+        "bvp_eda_core_spo2flag_binary": bvp + eda + spo2flag_binary,
+        "bvp_eda_core_spo2std": bvp + eda + spo2flag_std_only,
         "bvp_eda_resp_small": ranked_bvp_eda[:60] + ranked_resp[:10],
+        "bvp_eda_resp_small_spo2flag_binary": ranked_bvp_eda[:60] + ranked_resp[:10] + spo2flag_binary,
+        "bvp_eda_resp_small_spo2flag": ranked_bvp_eda[:60] + ranked_resp[:10] + spo2flag,
+        "all_top100": ranked_all[:100],
         "eda_bvp_fwd8": fwd8,
         "all": unique_by_canonical(feat_cols),
         "all_raw": feat_cols,
@@ -270,6 +281,9 @@ def make_binary_model(spec: ModelSpec):
             learning_rate=float(p.get("learning_rate", 0.08)),
             subsample=float(p.get("subsample", 1.0)),
             colsample_bytree=float(p.get("colsample_bytree", 1.0)),
+            min_child_weight=float(p.get("min_child_weight", 1.0)),
+            reg_alpha=float(p.get("reg_alpha", 0.0)),
+            reg_lambda=float(p.get("reg_lambda", 1.0)),
             max_bin=int(p.get("max_bin", 128)),
             tree_method="hist",
             objective="binary:logistic",
@@ -287,13 +301,7 @@ def make_binary_model(spec: ModelSpec):
             random_state=SEED,
         )
     if name == "logreg":
-        return LogisticRegression(
-            C=float(p.get("C", 1.0)),
-            class_weight="balanced",
-            max_iter=4000,
-            solver="lbfgs",
-            random_state=SEED,
-        )
+        return _make_logreg(p)
     if name == "svm_linear":
         return SVC(kernel="linear", C=float(p.get("C", 1.0)), class_weight="balanced", probability=True, random_state=SEED)
     if name == "svm_rbf":
@@ -301,7 +309,30 @@ def make_binary_model(spec: ModelSpec):
         if gamma not in ("scale", "auto"):
             gamma = float(gamma)
         return SVC(kernel="rbf", C=float(p.get("C", 1.0)), gamma=gamma, class_weight="balanced", probability=True, random_state=SEED)
+    if name == "svm_poly":
+        gamma = p.get("gamma", "scale")
+        if gamma not in ("scale", "auto"):
+            gamma = float(gamma)
+        return SVC(kernel="poly", degree=int(p.get("degree", 2)), coef0=float(p.get("coef0", 1.0)),
+                   C=float(p.get("C", 1.0)), gamma=gamma, class_weight="balanced", probability=True, random_state=SEED)
     raise ValueError(name)
+
+
+def _make_logreg(p: dict):
+    penalty = str(p.get("penalty", "l2")).lower()
+    C = float(p.get("C", 1.0))
+    if penalty == "l2":
+        return LogisticRegression(C=C, penalty="l2", class_weight="balanced",
+                                  max_iter=4000, solver="lbfgs", random_state=SEED)
+    if penalty == "l1":
+        return LogisticRegression(C=C, penalty="l1", class_weight="balanced",
+                                  max_iter=4000, solver="liblinear", random_state=SEED)
+    if penalty == "elasticnet":
+        return LogisticRegression(C=C, penalty="elasticnet",
+                                  l1_ratio=float(p.get("l1_ratio", 0.5)),
+                                  class_weight="balanced",
+                                  max_iter=4000, solver="saga", random_state=SEED)
+    raise ValueError(f"penalty={penalty}")
 
 
 def make_multiclass_model(spec: ModelSpec, n_classes: int):
@@ -315,6 +346,9 @@ def make_multiclass_model(spec: ModelSpec, n_classes: int):
             learning_rate=float(p.get("learning_rate", 0.08)),
             subsample=float(p.get("subsample", 1.0)),
             colsample_bytree=float(p.get("colsample_bytree", 1.0)),
+            min_child_weight=float(p.get("min_child_weight", 1.0)),
+            reg_alpha=float(p.get("reg_alpha", 0.0)),
+            reg_lambda=float(p.get("reg_lambda", 1.0)),
             max_bin=int(p.get("max_bin", 128)),
             tree_method="hist",
             objective="multi:softprob",
@@ -333,13 +367,7 @@ def make_multiclass_model(spec: ModelSpec, n_classes: int):
             random_state=SEED,
         )
     if name == "logreg":
-        return LogisticRegression(
-            C=float(p.get("C", 1.0)),
-            class_weight="balanced",
-            max_iter=4000,
-            solver="lbfgs",
-            random_state=SEED,
-        )
+        return _make_logreg(p)
     if name == "svm_linear":
         return SVC(kernel="linear", C=float(p.get("C", 1.0)), class_weight="balanced", probability=True, random_state=SEED)
     if name == "svm_rbf":
@@ -347,6 +375,12 @@ def make_multiclass_model(spec: ModelSpec, n_classes: int):
         if gamma not in ("scale", "auto"):
             gamma = float(gamma)
         return SVC(kernel="rbf", C=float(p.get("C", 1.0)), gamma=gamma, class_weight="balanced", probability=True, random_state=SEED)
+    if name == "svm_poly":
+        gamma = p.get("gamma", "scale")
+        if gamma not in ("scale", "auto"):
+            gamma = float(gamma)
+        return SVC(kernel="poly", degree=int(p.get("degree", 2)), coef0=float(p.get("coef0", 1.0)),
+                   C=float(p.get("C", 1.0)), gamma=gamma, class_weight="balanced", probability=True, random_state=SEED)
     raise ValueError(name)
 
 
@@ -512,12 +546,36 @@ def metrics_binary(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     }
 
 
-def metrics_multiclass(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    return {
+def metrics_multiclass(y_true: np.ndarray, y_pred: np.ndarray,
+                        y_proba: np.ndarray | None = None) -> dict:
+    out = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
         "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
     }
+    if y_proba is not None and len(np.unique(y_true)) >= 2:
+        try:
+            from sklearn.metrics import roc_auc_score
+            out["macro_auc"] = float(roc_auc_score(
+                y_true, y_proba, average="macro", multi_class="ovr", labels=[0, 1, 2],
+            ))
+        except Exception:
+            out["macro_auc"] = float("nan")
+    else:
+        out["macro_auc"] = float("nan")
+    return out
+
+
+def stage_probs_to_3class(stage1_probs: np.ndarray, stage2_probs: np.ndarray) -> np.ndarray:
+    """Combine stage1 (NoPain vs Pain) + stage2 (Arm vs Hand) -> 3-class probs."""
+    p_nopain = np.clip(stage1_probs[:, 0], 1e-9, 1.0 - 1e-9)
+    p_pain = 1.0 - p_nopain
+    p_arm_given_pain = np.clip(stage2_probs[:, 0], 1e-9, 1.0 - 1e-9)
+    p_arm = p_pain * p_arm_given_pain
+    p_hand = p_pain * (1.0 - p_arm_given_pain)
+    proba = np.column_stack([p_nopain, p_arm, p_hand])
+    s = proba.sum(axis=1, keepdims=True)
+    return proba / np.clip(s, 1e-9, None)
 
 
 def decode_joint_weighted(stage1_probs: np.ndarray, stage2_probs: np.ndarray, w0: float = 0.8, w1: float = 1.2, w2: float = 1.4) -> np.ndarray:

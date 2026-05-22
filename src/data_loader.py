@@ -59,8 +59,14 @@ def parse_column(col: str) -> tuple[int, str, int]:
 
     The class label is canonicalised to one of CLASSES.
     Segment index is 1-based as in the files.
+
+    Test set uses '<sid>_<idx>' (2 parts, no class label); returns class="Unknown".
     """
     parts = col.strip().split("_")
+    if len(parts) == 2:
+        sid = int(parts[0])
+        idx = int(parts[1])
+        return sid, "Unknown", idx
     if len(parts) < 3:
         raise ValueError(f"Unexpected column name {col!r}")
     sid = int(parts[0])
